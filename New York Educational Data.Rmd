@@ -1,0 +1,169 @@
+---
+title: "New York Educational Data"
+output: html_notebook
+---
+
+This notebook will analyze the New York Grauduation Data located at 
+https://data.nysed.gov/downloads.php
+
+The majority of the analysis will use SQLite for the SQL version
+
+```{r}
+# Import dataset
+library(readr)
+f = "C:/Users/yaleq/Google Drive/SQL Project/GRAD_RATE_AND_OUTCOMES_2019.csv"
+grad_df <- read_csv(f)
+```
+
+```{r message=FALSE}
+# Import needed libraries
+library(sqldf)
+library(tidyverse)
+library(dplyr)
+```
+
+```{r}
+# Count how many rows are in the dataset
+
+query = "SELECT COUNT(1) AS n_rows
+         FROM grad_df"
+sqldf(query)
+
+```
+
+```{r}
+# Column Names and information
+query = "PRAGMA table_info(grad_df)"
+
+sqldf(query)
+```
+
+```{r}
+# Check how to aggregate the data.
+query = "SELECT DISTINCT aggregation_type
+         FROM grad_df
+         ORDER BY aggregation_type DESC"
+
+sqldf(query)
+```
+
+```{r}
+# Number of unique schools
+query = "SELECT COUNT (DISTINCT aggregation_name) as 'num_schools'
+         FROM grad_df
+         WHERE aggregation_type = 'School'"
+         
+
+sqldf(query)
+```
+
+Schools are reporting based on subgroups.  I want to see what subgroups
+are reported
+
+```{r}
+query = "SELECT DISTINCT subgroup_name
+         FROM grad_df
+         WHERE aggregation_type = 'School'
+         ORDER BY subgroup_name"
+sqldf(query)
+
+```
+
+```{r}
+# Average graduation percentage
+query = "SELECT subgroup_name, AVG(grad_pct) as 'avg_grad_percent'
+         FROM grad_df
+         WHERE aggregation_type = 'School'
+         GROUP BY subgroup_name
+         ORDER BY AVG(grad_pct) DESC"
+
+sqldf(query)
+```
+
+From the above table we can see that female, and students who are not
+economically disadvantaged, on average, graduate at a higher percentage
+than the overall graduation percentage.
+
+It looks like schools report graduation rate based on cohort and years
+enrolled
+
+```{r}
+# Cohorts
+query = "SELECT DISTINCT membership_desc
+         FROM grad_df
+         WHERE aggregation_type = 'School'
+         ORDER BY membership_desc"
+
+sqldf(query)
+```
+
+
+
+```{r}
+# 4-year grad rate for high schools
+query = "SELECT aggregation_name AS 'School Name', 
+                membership_desc AS 'Student Type',
+                grad_pct AS 'Grad Percentage'
+         FROM grad_df
+         WHERE aggregation_type = 'School' 
+               AND subgroup_name = 'All Students'
+               AND aggregation_name LIKE '%high%'
+               AND membership_desc LIKE '%4 Year Outcome - August 2019%'
+               AND grad_pct >= 0
+         GROUP BY aggregation_name
+         ORDER BY grad_pct DESC
+        "
+
+sqldf(query)
+```
+
+Looking at charter vs non-charter high schools
+```{r}
+# 4-year grad rate comparison of all students
+query = "SELECT nrc_desc AS 'School Type', 
+                membership_desc AS 'Student Type',
+                grad_pct AS 'Grad Percentage'
+         FROM grad_df
+         WHERE subgroup_name = 'All Students'
+               AND aggregation_name LIKE '%high%'
+               AND membership_desc LIKE '%4 Year Outcome - August 2019%'
+               AND grad_pct >= 0
+         GROUP BY nrc_desc
+         ORDER BY grad_pct DESC
+        "
+
+sqldf(query)
+```
+
+Let's look at dropout rates
+```{r}
+# dropout grad rate comparison
+query = "SELECT nrc_desc AS 'School Type', 
+                membership_desc AS 'Student Type',
+                ROUND(AVG(dropout_pct),2) AS 'Average Dropout Percentage'
+         FROM grad_df
+         WHERE subgroup_name = 'All Students'
+               AND aggregation_name LIKE '%high%'
+               AND membership_desc LIKE '%4 Year Outcome - August 2019%'
+               AND grad_pct >= 0
+         GROUP BY nrc_desc
+         ORDER BY dropout_pct DESC
+        "
+
+sqldf(query)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
